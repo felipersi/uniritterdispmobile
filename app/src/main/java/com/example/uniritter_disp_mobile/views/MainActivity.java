@@ -1,5 +1,15 @@
 package com.example.uniritter_disp_mobile;
 
+//import com.example.uniritter_disp_mobile.atsd.gps.R;
+import com.example.uniritter_disp_mobile.PosicaoAdapter;
+//import com.example.uniritter_disp_mobile.PosicaoViewModel;
+//import com.example.uniritter_disp_mobile.SensorsViewModel;
+//import com.example.uniritter_disp_mobile.GPSBroadcastReceiver;
+//import com.example.uniritter_disp_mobile.PosicaoRepository;
+//import com.example.uniritter_disp_mobile.DBHelper;
+
+
+
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
