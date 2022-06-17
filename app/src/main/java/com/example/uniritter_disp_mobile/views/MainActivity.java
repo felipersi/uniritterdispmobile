@@ -1,203 +1,158 @@
-package com.example.uniritter_disp_mobile;
+package com.example.uniritter_disp_mobile.views;
 
-//import com.example.uniritter_disp_mobile.atsd.gps.R;
-import com.example.uniritter_disp_mobile.PosicaoAdapter;
-//import com.example.uniritter_disp_mobile.PosicaoViewModel;
-//import com.example.uniritter_disp_mobile.SensorsViewModel;
-//import com.example.uniritter_disp_mobile.GPSBroadcastReceiver;
-//import com.example.uniritter_disp_mobile.PosicaoRepository;
-//import com.example.uniritter_disp_mobile.DBHelper;
-
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 
 import android.Manifest;
-import android.app.Activity;
-import android.content.Context;
+import android.content.BroadcastReceiver;
 import android.content.Intent;
-import android.content.IntentSender;
-import android.content.pm.PackageManager;
-import android.location.LocationManager;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.database.sqlite.SQLiteDatabase;
+import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Looper;
+import android.util.Log;
 import android.view.View;
-import android.widget.Button;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
+import java.util.List;
 
-import com.example.uniritter_disp_mobile.model.GPSActivity;
-import com.google.android.gms.common.api.ApiException;
-import com.google.android.gms.common.api.ResolvableApiException;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.LocationSettingsRequest;
-import com.google.android.gms.location.LocationSettingsResponse;
-import com.google.android.gms.location.LocationSettingsStatusCodes;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
+import com.example.uniritter_disp_mobile.R;
+import com.example.uniritter_disp_mobile.adapter.PosicaoAdapter;
+import com.example.uniritter_disp_mobile.broadcastreceiver.GPSBroadcastReceiver;
+import com.example.uniritter_disp_mobile.repositorios.PosicaoRepository;
+import com.example.uniritter_disp_mobile.sqlite.DBHelper;
+import com.example.uniritter_disp_mobile.viewmodel.SensorsViewModel;
+import com.example.uniritter_disp_mobile.viewmodel.PosicaoViewModel;
+
 
 
 public class MainActivity extends AppCompatActivity {
 
-    private TextView AddressText;
-    private Button LocationButton;
-    private LocationRequest locationRequest;
-
+    private SensorsViewModel viewmodel;
+    int valor = 0;
+    BroadcastReceiver br;
+    //adicionado requiresApi aqui
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        registrarIntentFilters();
 
-        AddressText = findViewById(R.id.addressText);
-        LocationButton = findViewById(R.id.locationButton);
 
-        locationRequest = LocationRequest.create();
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        locationRequest.setInterval(5000);
-        locationRequest.setFastestInterval(2000);
-
-        LocationButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-                getCurrentLocation();
-            }
+        findViewById(R.id.button2).setOnClickListener(view->{
+            Intent intent = new Intent();
+            intent.setAction("br.edu.uniritter.GPS_START");
+            getApplicationContext().sendBroadcast(intent);
         });
 
-
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (requestCode == 1){
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED){
-
-                if (isGPSEnabled()) {
-
-                    getCurrentLocation();
-
-                }else {
-
-                    turnOnGPS();
-                }
-            }
-        }
-
-
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == 2) {
-            if (resultCode == Activity.RESULT_OK) {
-
-                getCurrentLocation();
-            }
-        }
-    }
-
-    private void getCurrentLocation() {
-
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-
-                if (isGPSEnabled()) {
-
-                    LocationServices.getFusedLocationProviderClient(MainActivity.this)
-                            .requestLocationUpdates(locationRequest, new LocationCallback() {
-                                @Override
-                                public void onLocationResult(@NonNull LocationResult locationResult) {
-                                    super.onLocationResult(locationResult);
-
-                                    LocationServices.getFusedLocationProviderClient(MainActivity.this)
-                                            .removeLocationUpdates(this);
-
-                                    if (locationResult != null && locationResult.getLocations().size() >0){
-
-                                        int index = locationResult.getLocations().size() - 1;
-                                        double latitude = locationResult.getLocations().get(index).getLatitude(); //posição atual para adicionar no banco
-                                        double longitude = locationResult.getLocations().get(index).getLongitude(); //posição atual para adicionar no banco
-
-                                        AddressText.setText("Latitude: "+ latitude + "\n" + "Longitude: "+ longitude);
-                                    }
-                                }
-                            }, Looper.getMainLooper());
-
-                } else {
-                    turnOnGPS();
-                }
-
-            } else {
-                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-            }
-        }
-    }
-
-    private void turnOnGPS() {
-
-
-
-        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
-                .addLocationRequest(locationRequest);
-        builder.setAlwaysShow(true);
-
-        Task<LocationSettingsResponse> result = LocationServices.getSettingsClient(getApplicationContext())
-                .checkLocationSettings(builder.build());
-
-        result.addOnCompleteListener(new OnCompleteListener<LocationSettingsResponse>() {
+        /*findViewById(R.id.btNext).setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onComplete(@NonNull Task<LocationSettingsResponse> task) {
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this.getApplicationContext(), GPSActivity.class);
+                MainActivity.this.startActivity(intent);
+            }
+        });
+        */
+        setarRecyclerViewGPS();
 
-                try {
-                    LocationSettingsResponse response = task.getResult(ApiException.class);
-                    Toast.makeText(MainActivity.this, "GPS is already tured on", Toast.LENGTH_SHORT).show();
+        DBHelper dbHelper = new DBHelper(this);
+        SQLiteDatabase writableDatabase = dbHelper.getWritableDatabase();
 
-                } catch (ApiException e) {
 
-                    switch (e.getStatusCode()) {
-                        case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+        findViewById(R.id.buttonMap).setOnClickListener((v)->{
+            Intent intent = new Intent(getApplicationContext(), MapActivity.class);
+            startActivity(intent);
+        });
+    }
 
-                            try {
-                                ResolvableApiException resolvableApiException = (ResolvableApiException) e;
-                                resolvableApiException.startResolutionForResult(MainActivity.this, 2);
-                            } catch (IntentSender.SendIntentException ex) {
-                                ex.printStackTrace();
-                            }
-                            break;
+    private void setarRecyclerViewGPS() {
+        RecyclerView recyclerView =  findViewById(R.id.rvPosicao);
+        PosicaoAdapter adapter =  new PosicaoAdapter();
+        recyclerView.setLayoutManager( new LinearLayoutManager(this));
+        recyclerView.setAdapter(adapter);
 
-                        case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
-                            //Device does not have location
-                            break;
+        PosicaoViewModel viewmodel = new ViewModelProvider(this).get(PosicaoViewModel.class);
+
+        PosicaoRepository.getInstance().getPosicoes().observe(this,
+                new Observer<List<Location>>() {
+                    @Override
+                    public void onChanged(List<Location> locations) {
+                        adapter.refresh();
                     }
                 }
-            }
+        );
+    }
+
+    private void carregaPreferencias() {
+
+        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        int qtd = 0;
+        if (preferences.contains("qtd")) {
+            qtd = preferences.getInt("qtd",0)+1;
+        }
+        editor.putInt("qtd", qtd);
+        editor.commit();
+    }
+    //adicionado requiresApi
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    private void verificaPermissoes() {
+        ActivityResultLauncher<String[]> locationPermissionRequest =
+                registerForActivityResult(new ActivityResultContracts
+                                .RequestMultiplePermissions(), result -> {
+                            Boolean fineLocationGranted = result.getOrDefault(
+                                    Manifest.permission.ACCESS_FINE_LOCATION, false);
+                            Boolean coarseLocationGranted = result.getOrDefault(
+                                    Manifest.permission.ACCESS_COARSE_LOCATION,false);
+                            Boolean backgroundLocationGranted = result.getOrDefault(
+                                    Manifest.permission.ACCESS_BACKGROUND_LOCATION,false);
+                            if (fineLocationGranted != null && fineLocationGranted && backgroundLocationGranted) {
+                                Log.d("MainActivity", "onCreate: autorizado GPS");
+                                Toast.makeText(this, "Localização autorizado", Toast.LENGTH_SHORT).show();
+
+
+                            } else if (coarseLocationGranted != null && coarseLocationGranted) {
+                                Toast.makeText(this, "Somente localização aproximada", Toast.LENGTH_SHORT).show();
+                                // Somente localização aproximada autorizada
+                            } else {
+                                // Nenhuma localização autorizada
+                                Toast.makeText(this, "Localização não autorizada", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                );
+
+        locationPermissionRequest.launch(new String[] {
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
         });
 
     }
 
-    private boolean isGPSEnabled() {
-        LocationManager locationManager = null;
-        boolean isEnabled = false;
+    //adicionado requiresApi
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void registrarIntentFilters() {
+        br = new GPSBroadcastReceiver();
+        IntentFilter intf = new IntentFilter("com.example.uniritter_disp_mobile.GPS_START");
+        IntentFilter intf1 = new IntentFilter("android.intent.action.BOOT_COMPETED");
 
-        if (locationManager == null) {
-            locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        }
-
-        isEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
-        return isEnabled;
-
+        registerReceiver(br, intf);
+        registerReceiver(br, intf1);
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // uma boa prática é desregistrar o brodcastreceiver no final da aplicação
+        //unregisterReceiver(br);
+    }
 }
